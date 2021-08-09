@@ -41,6 +41,9 @@ var (
 	// this is the GUID definition from shlobj.h
 	//DEFINE_KNOWN_FOLDER(FOLDERID_ProgramData,         0x62AB5D82, 0xFDC1, 0x4DC3, 0xA9, 0xDD, 0x07, 0x0D, 0x1D, 0x49, 0x5D, 0x97);
 	FOLDERIDProgramData = GUID{0x62AB5D82, 0xFDC1, 0x4DC3, [8]byte{0xA9, 0xDD, 0x07, 0x0D, 0x1D, 0x49, 0x5D, 0x97}}
+	// {905e63b6-c1bf-494e-b29c-65b732d3d21a}
+	//DEFINE_KNOWN_FOLDER(FOLDERID_ProgramFiles,        0x905e63b6, 0xc1bf, 0x494e, 0xb2, 0x9c, 0x65, 0xb7, 0x32, 0xd3, 0xd2, 0x1a);
+	FOLDERIDProgramFiles = GUID{0x905e63b6, 0xc1bf, 0x494e, [8]byte{0xb2, 0x9c, 0x65, 0xb7, 0x32, 0xd3, 0xd2, 0x1a}}
 )
 
 var (
@@ -104,5 +107,41 @@ func GetProgramDataDirForProduct(product string) (path string, err error) {
 		return getDefaultProgramDataDir()
 	}
 	path = val
+	return
+}
+
+// GetProgramFilesDirForProduct returns the root of the installatoin directory,
+// usually c:\program files\datadog\datadog agent
+func GetProgramFilesDirForProduct(product string) (path string, err error) {
+	keyname := "SOFTWARE\\Datadog\\" + product
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE,
+		keyname,
+		registry.ALL_ACCESS)
+	if err != nil {
+		// if the key isn't there, we might be running a standalone binary that wasn't installed through MSI
+		log.Debugf("Windows installation key root (%s) not found, using default program data dir", keyname)
+		return getDefaultProgramFilesDir()
+	}
+	defer k.Close()
+	val, _, err := k.GetStringValue("InstallPath")
+	if err != nil {
+		log.Warnf("Windows installation key config not found, using default program data dir")
+		return getDefaultProgramFilesDir()
+	}
+	path = val
+	return
+}
+
+func getDefaultProgramFilesDir() (path string, err error) {
+	var retstr uintptr
+	err = SHGetKnownFolderPath(&FOLDERIDProgramFiles, 0, 0, &retstr)
+	if err == nil {
+		// convert the string
+		defer CoTaskMemFree(retstr)
+		// the path = windows.UTF16ToString... returns a
+		// go vet: "possible misuse of unsafe.Pointer"
+		path = windows.UTF16ToString((*[1 << 16]uint16)(unsafe.Pointer(retstr))[:])
+		path = filepath.Join(path, "Datadog", "Datadog Agent")
+	}
 	return
 }
