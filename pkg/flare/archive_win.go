@@ -215,13 +215,12 @@ func zipServiceStatus(tempDir, hostname string) error {
 	f := filepath.Join(tempDir, hostname, "servicestatus.txt")
 	err := ensureParentDirsExist(f)
 	if err != nil {
-		log.Warnf("Error in ensureParentDirsExist %v", err)
-		return err
+		return fmt.Errorf("Error in ensureParentDirsExist %v", err)
 	}
 
 	fh, err := os.Create(f)
 	if err != nil {
-		log.Warnf("Error creating temp file %s %v", f, err)
+		return fmt.Errorf("Error creating temp file %s %v", f, err)
 	}
 	defer fh.Close()
 	cancelctx, cancelfunc := context.WithTimeout(context.Background(), execTimeout)

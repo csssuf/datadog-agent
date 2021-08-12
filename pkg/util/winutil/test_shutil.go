@@ -15,3 +15,8 @@ func GetProgramDataDir() (path string, err error) {
 func GetProgramDataDirForProduct(product string) (path string, err error) {
 	return "", nil
 }
+
+// GetProgramFilesDirForProduct dummy function because the real one doesn't vet
+func GetProgramFilesDirForProduct(product string) (path string, err error) {
+	return "", nil
+}
