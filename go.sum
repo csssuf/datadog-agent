@@ -122,8 +122,8 @@ github.com/DataDog/mmh3 v0.0.0-20200316233529-f5b682d8c981 h1:UcKqIrOowv2PjTkOC2
 github.com/DataDog/mmh3 v0.0.0-20200316233529-f5b682d8c981/go.mod h1:SvsjzyJlSg0rKsqYgdcFxeEVflx3ZNAyFfkUHP0TxXg=
 github.com/DataDog/nikos v1.0.0 h1:rpZRYzsT8sCOGmYCOuFGIW9TEQJ4zGEz1UPi7J3wUz8=
 github.com/DataDog/nikos v1.0.0/go.mod h1:m4dT3ncRR/jXiTdwg4GLK8gGJdGJILin+3A4paL8Rxg=
-github.com/DataDog/sketches-go v1.1.0 h1:eeUOWMFL6Yygjq/8Lv116uanBlHXiF5kLihR7kYLnH4=
-github.com/DataDog/sketches-go v1.1.0/go.mod h1:O+XkJHWk9w4hDwY2ZUDU31ZC9sNYlYo8DiFsxjYeo1k=
+github.com/DataDog/sketches-go v1.2.0 h1:1fyVz0zNw2WamTu5kL8ZCSIXd7ipB4I9Tm5M9LBSvIY=
+github.com/DataDog/sketches-go v1.2.0/go.mod h1:1xYmPLY1So10AwxV6MJV0J53XVH+WL9Ad1KetxVivVI=
 github.com/DataDog/viper v1.9.0 h1:9Ha1yJebecIKtboH/GXUM3brfoMofvdd8BlMck8Cs8Q=
 github.com/DataDog/viper v1.9.0/go.mod h1:Gx7+/WONkbQIh3ac52KqcFTzipQ1OYHhCQGWAgHlzpc=
 github.com/DataDog/watermarkpodautoscaler v0.2.1-0.20210323121426-cfb2caa5613f h1:MESPSq9d/7I0plUd8M4e4jD8DQ/aMA2sc634hZAsKGQ=
@@ -1921,8 +1921,9 @@ google.golang.org/protobuf v1.23.1-0.20200526195155-81db48ad09cc/go.mod h1:EGpAD
 google.golang.org/protobuf v1.24.0/go.mod h1:r/3tXBNzIEhYS9I1OUVjXDlt8tc493IdKGjtUeSXeh4=
 google.golang.org/protobuf v1.25.0/go.mod h1:9JNX74DMeImyA3h4bdi1ymwjUzf21/xIlbajtzgsN7c=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
-google.golang.org/protobuf v1.26.0 h1:bxAC2xTBsZGibn2RTntX0oH50xLsqy1OxA9tTL3p/lk=
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
+google.golang.org/protobuf v1.27.1 h1:SnqbnDw1V7RiZcXPx5MEeqPv2s79L9i7BJUlG/+RurQ=
+google.golang.org/protobuf v1.27.1/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
 gopkg.in/DataDog/dd-trace-go.v1 v1.30.0 h1:yJJrDYzAlUsDPpAVBjv4VFnXKTbgvaJFTX0646xDPi4=
 gopkg.in/DataDog/dd-trace-go.v1 v1.30.0/go.mod h1:SnKViq44dv/0gjl9RpkP0Y2G3BJSRkp6eYdCSu39iI8=
 gopkg.in/Knetic/govaluate.v3 v3.0.0 h1:18mUyIt4ZlRlFZAAfVetz4/rzlJs9yhN+U02F4u1AOc=
