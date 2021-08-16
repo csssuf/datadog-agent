@@ -22,9 +22,9 @@ import (
 
 const (
 	// profilingURLTemplate specifies the template for obtaining the profiling URL along with the site.
-	profilingURLTemplate = "https://intake.profile.%s/v1/input"
+	profilingURLTemplate = "https://intake.profile.%s/api/v2/profile"
 	// profilingURLDefault specifies the default intake API URL.
-	profilingURLDefault = "https://intake.profile.datadoghq.com/v1/input"
+	profilingURLDefault = "https://intake.profile.datadoghq.com/api/v2/profile"
 )
 
 // profilingEndpoints returns the profiling intake urls and their corresponding
