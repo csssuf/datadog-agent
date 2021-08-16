@@ -11,6 +11,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/network/config"
 	netebpf "github.com/DataDog/datadog-agent/pkg/network/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/network/ebpf/probes"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/ebpf"
 	"github.com/DataDog/ebpf/manager"
 	"golang.org/x/sys/unix"
@@ -23,14 +24,37 @@ const (
 	defaultClosedChannelSize = 500
 )
 
+var mainHTTPMaps = []string{
+	string(probes.HttpInFlightMap),
+	string(probes.HttpBatchesMap),
+	string(probes.HttpBatchStateMap),
+
+	// SSL
+	"sock_by_pid_fd",
+	"ssl_sock_by_ctx",
+	"ssl_read_args",
+	"fd_by_ssl_bio",
+
+	// Crypto (BIO)
+	"bio_new_socket_args",
+}
+
+type subprogram interface {
+	Start() error
+	Init() error
+	Close() error
+}
+
 type ebpfProgram struct {
 	*manager.Manager
 	cfg         *config.Config
 	perfHandler *ddebpf.PerfHandler
 	bytecode    bytecode.AssetReader
+	subprograms []subprogram
+	sockFDMap   *ebpf.Map
 }
 
-func newEBPFProgram(c *config.Config) (*ebpfProgram, error) {
+func newEBPFProgram(c *config.Config, offsets []manager.ConstantEditor, sockFD *ebpf.Map) (*ebpfProgram, error) {
 	bytecode, err := netebpf.ReadHTTPModule(c.BPFDir, c.BPFDebug)
 	if err != nil {
 		return nil, err
@@ -43,11 +67,6 @@ func newEBPFProgram(c *config.Config) (*ebpfProgram, error) {
 	perfHandler := ddebpf.NewPerfHandler(closedChannelSize)
 
 	mgr := &manager.Manager{
-		Maps: []*manager.Map{
-			{Name: string(probes.HttpInFlightMap)},
-			{Name: string(probes.HttpBatchesMap)},
-			{Name: string(probes.HttpBatchStateMap)},
-		},
 		PerfMaps: []*manager.PerfMap{
 			{
 				Map: manager.Map{Name: string(probes.HttpNotificationsMap)},
@@ -65,28 +84,32 @@ func newEBPFProgram(c *config.Config) (*ebpfProgram, error) {
 		},
 	}
 
-	return &ebpfProgram{
+	for _, m := range mainHTTPMaps {
+		mgr.Maps = append(mgr.Maps, &manager.Map{Name: m})
+	}
+
+	program := &ebpfProgram{
 		Manager:     mgr,
 		perfHandler: perfHandler,
 		bytecode:    bytecode,
 		cfg:         c,
-	}, nil
+		sockFDMap:   sockFD,
+	}
+
+	sharedLibraries := findOpenSSLLibraries(c.ProcRoot)
+	var subprograms []subprogram
+	subprograms = append(subprograms, createSSLPrograms(program, offsets, sharedLibraries)...)
+	subprograms = append(subprograms, createCryptoPrograms(program, sharedLibraries)...)
+	program.subprograms = subprograms
+
+	return program, nil
 }
 
 func (e *ebpfProgram) Init() error {
-	defer e.bytecode.Close()
-
-	return e.InitWithOptions(e.bytecode, manager.Options{
+	options := manager.Options{
 		RLimit: &unix.Rlimit{
 			Cur: math.MaxUint64,
 			Max: math.MaxUint64,
-		},
-		MapSpecEditors: map[string]manager.MapSpecEditor{
-			string(probes.HttpInFlightMap): {
-				Type:       ebpf.Hash,
-				MaxEntries: uint32(e.cfg.MaxTrackedConnections),
-				EditorFlag: manager.EditMaxEntries,
-			},
 		},
 		ActivatedProbes: []manager.ProbesSelector{
 			&manager.ProbeSelector{
@@ -100,5 +123,67 @@ func (e *ebpfProgram) Init() error {
 				},
 			},
 		},
-	})
+	}
+
+	if e.sockFDMap != nil {
+		options.MapEditors = map[string]*ebpf.Map{
+			"sock_by_pid_fd": e.sockFDMap,
+		}
+	}
+
+	err := e.InitWithOptions(e.bytecode, options)
+	if err != nil {
+		return err
+	}
+
+	for _, subprogram := range e.subprograms {
+		err := subprogram.Init()
+		if err != nil {
+			log.Errorf("error initializing http subprogram: %s. ignoring it.", err)
+		}
+	}
+
+	return nil
+}
+
+func (e *ebpfProgram) Start() error {
+	err := e.Manager.Start()
+	if err != nil {
+		return err
+	}
+
+	for _, subprogram := range e.subprograms {
+		err := subprogram.Start()
+		if err != nil {
+			log.Errorf("error starting http subprogram: %s. ignoring it.", err)
+		}
+	}
+
+	return nil
+}
+
+func (e *ebpfProgram) Close() error {
+	for _, p := range e.subprograms {
+		p.Close()
+	}
+
+	return e.Manager.Stop(manager.CleanAll)
+}
+
+func setupSharedMaps(mainProgram *ebpfProgram, toShare ...string) map[string]*ebpf.Map {
+	if mainProgram == nil || len(toShare) == 0 {
+		return nil
+	}
+
+	sharedMaps := make(map[string]*ebpf.Map)
+	for _, m := range toShare {
+		emap, _, _ := mainProgram.GetMap(m)
+		if emap == nil {
+			log.Errorf("couldn't retrieve map: %s", m)
+			continue
+		}
+		sharedMaps[m] = emap
+	}
+
+	return sharedMaps
 }
