@@ -20,16 +20,16 @@ var openSSLLibs = regexp.MustCompile(
 )
 
 func findOpenSSLLibraries(procRoot string) []so.Library {
-	// all will include all host-resolved openSSL paths that alredy mapped into memory
+	// libraries will include all host-resolved openSSL library paths mapped into memory
 	libraries := so.Find(procRoot, openSSLLibs)
 
-	// we merge with the configuration set through the env vars
+	// we merge it with the library locations provided via the SSL_LIB_PATHS env variable
 	if libsFromEnv := fromEnv(); len(libsFromEnv) > 0 {
 		libraries = append(libraries, libsFromEnv...)
 	}
 
-	// prepend everything with the HOST_FS
-	// TODO: Expose this as a configuration param
+	// prepend everything with the HOST_FS, which designates where the underlying
+	// host file system is mounted. This is intended for internal testing only.
 	if hostFS := os.Getenv("HOST_FS"); hostFS != "" {
 		for i, lib := range libraries {
 			libraries[i].HostPath = filepath.Join(hostFS, lib.HostPath)
