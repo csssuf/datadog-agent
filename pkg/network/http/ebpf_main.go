@@ -111,6 +111,18 @@ func (e *ebpfProgram) Init() error {
 			Cur: math.MaxUint64,
 			Max: math.MaxUint64,
 		},
+		MapSpecEditors: map[string]manager.MapSpecEditor{
+			string(probes.HttpInFlightMap): {
+				Type:       ebpf.Hash,
+				MaxEntries: uint32(e.cfg.MaxTrackedConnections),
+				EditorFlag: manager.EditMaxEntries,
+			},
+			"ssl_sock_by_ctx": {
+				Type:       ebpf.Hash,
+				MaxEntries: uint32(e.cfg.MaxTrackedConnections),
+				EditorFlag: manager.EditMaxEntries,
+			},
+		},
 		ActivatedProbes: []manager.ProbesSelector{
 			&manager.ProbeSelector{
 				ProbeIdentificationPair: manager.ProbeIdentificationPair{

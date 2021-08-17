@@ -10,7 +10,7 @@ struct bpf_map_def SEC("maps/http_in_flight") http_in_flight = {
     .type = BPF_MAP_TYPE_HASH,
     .key_size = sizeof(conn_tuple_t),
     .value_size = sizeof(http_transaction_t),
-    .max_entries = 10000,
+    .max_entries = 1, // This will get overridden at runtime using max_tracked_connections
     .pinning = 0,
     .namespace = "",
 };
@@ -49,7 +49,7 @@ struct bpf_map_def SEC("maps/ssl_sock_by_ctx") ssl_sock_by_ctx = {
     .type = BPF_MAP_TYPE_HASH,
     .key_size = sizeof(void *),
     .value_size = sizeof(ssl_sock_t),
-    .max_entries = 1024,
+    .max_entries = 1, // This will get overridden at runtime using max_tracked_connections
     .pinning = 0,
     .namespace = "",
 };
