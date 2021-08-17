@@ -73,7 +73,7 @@ static __always_inline conn_tuple_t* tup_from_ssl_ctx(void *ssl_ctx, u64 pid_tgi
         return NULL;
     }
 
-    if (ssl_sock->tup.metadata) {
+    if (ssl_sock->tup.sport != 0 && ssl_sock->tup.dport != 0) {
         return &ssl_sock->tup;
     }
 
