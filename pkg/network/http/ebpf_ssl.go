@@ -23,15 +23,20 @@ var sslProbes = []string{
 	"uprobe/SSL_shutdown",
 }
 
-var sslMaps = []string{
-	string(probes.HttpInFlightMap),
-	string(probes.HttpBatchesMap),
-	string(probes.HttpBatchStateMap),
+const (
+	sslSockByCtxMap = "ssl_sock_by_ctx"
+	sslReadArgsMap  = "ssl_read_args"
+	sslFDByBioMap   = "fd_by_ssl_bio"
+)
 
-	"sock_by_pid_fd",
-	"ssl_sock_by_ctx",
-	"ssl_read_args",
-	"fd_by_ssl_bio",
+var sslMaps = []string{
+	httpInFlightMap,
+	httpBatchesMap,
+	httpBatchStateMap,
+	string(probes.SockByPidFDMap),
+	sslSockByCtxMap,
+	sslReadArgsMap,
+	sslFDByBioMap,
 }
 
 // sslProgram encapsulates the uprobe management for one specific OpenSSL library "instance"

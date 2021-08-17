@@ -18,6 +18,16 @@ import (
 )
 
 const (
+	// HTTP maps used by the main eBPFProgram
+	httpInFlightMap      = "http_in_flight"
+	httpBatchesMap       = "http_batches"
+	httpBatchStateMap    = "http_batch_state"
+	httpNotificationsMap = "http_notifications"
+
+	// ELF section of the BPF_PROG_TYPE_SOCKET_FILTER program used
+	// to inspect plain HTTP traffic
+	httpSocketFilter = "socket/http_filter"
+
 	// maxActive configures the maximum number of instances of the kretprobe-probed functions handled simultaneously.
 	// This value should be enough for typical workloads (e.g. some amount of processes blocked on the accept syscall).
 	maxActive                = 128
@@ -25,18 +35,18 @@ const (
 )
 
 var mainHTTPMaps = []string{
-	string(probes.HttpInFlightMap),
-	string(probes.HttpBatchesMap),
-	string(probes.HttpBatchStateMap),
+	httpInFlightMap,
+	httpBatchesMap,
+	httpBatchStateMap,
 
 	// SSL
-	"sock_by_pid_fd",
-	"ssl_sock_by_ctx",
-	"ssl_read_args",
-	"fd_by_ssl_bio",
+	string(probes.SockByPidFDMap),
+	sslSockByCtxMap,
+	sslReadArgsMap,
+	sslFDByBioMap,
 
 	// Crypto (BIO)
-	"bio_new_socket_args",
+	cryptoNewSocketArgsMap,
 }
 
 type subprogram interface {
@@ -69,7 +79,7 @@ func newEBPFProgram(c *config.Config, offsets []manager.ConstantEditor, sockFD *
 	mgr := &manager.Manager{
 		PerfMaps: []*manager.PerfMap{
 			{
-				Map: manager.Map{Name: string(probes.HttpNotificationsMap)},
+				Map: manager.Map{Name: httpNotificationsMap},
 				PerfMapOptions: manager.PerfMapOptions{
 					PerfRingBufferSize: 8 * os.Getpagesize(),
 					Watermark:          1,
@@ -80,7 +90,7 @@ func newEBPFProgram(c *config.Config, offsets []manager.ConstantEditor, sockFD *
 		},
 		Probes: []*manager.Probe{
 			{Section: string(probes.TCPSendMsgReturn), KProbeMaxActive: maxActive},
-			{Section: string(probes.SocketHTTPFilter)},
+			{Section: httpSocketFilter},
 		},
 	}
 
@@ -112,12 +122,12 @@ func (e *ebpfProgram) Init() error {
 			Max: math.MaxUint64,
 		},
 		MapSpecEditors: map[string]manager.MapSpecEditor{
-			string(probes.HttpInFlightMap): {
+			httpInFlightMap: {
 				Type:       ebpf.Hash,
 				MaxEntries: uint32(e.cfg.MaxTrackedConnections),
 				EditorFlag: manager.EditMaxEntries,
 			},
-			"ssl_sock_by_ctx": {
+			sslSockByCtxMap: {
 				Type:       ebpf.Hash,
 				MaxEntries: uint32(e.cfg.MaxTrackedConnections),
 				EditorFlag: manager.EditMaxEntries,
@@ -126,7 +136,7 @@ func (e *ebpfProgram) Init() error {
 		ActivatedProbes: []manager.ProbesSelector{
 			&manager.ProbeSelector{
 				ProbeIdentificationPair: manager.ProbeIdentificationPair{
-					Section: string(probes.SocketHTTPFilter),
+					Section: httpSocketFilter,
 				},
 			},
 			&manager.ProbeSelector{
@@ -139,7 +149,7 @@ func (e *ebpfProgram) Init() error {
 
 	if e.sockFDMap != nil {
 		options.MapEditors = map[string]*ebpf.Map{
-			"sock_by_pid_fd": e.sockFDMap,
+			string(probes.SockByPidFDMap): e.sockFDMap,
 		}
 	}
 

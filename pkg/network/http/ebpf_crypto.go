@@ -18,9 +18,13 @@ var cryptoProbes = []string{
 	"uretprobe/BIO_new_socket",
 }
 
+const (
+	cryptoNewSocketArgsMap = "bio_new_socket_args"
+)
+
 var cryptoMaps = []string{
-	"bio_new_socket_args",
-	"fd_by_ssl_bio",
+	cryptoNewSocketArgsMap,
+	sslFDByBioMap,
 }
 
 type cryptoProgram struct {
