@@ -243,6 +243,14 @@ func TestParsePods(t *testing.T) {
 						Name:  "MY_CUSTOM_ENV_VAR",
 						Value: "foo-custom-value",
 					},
+					{
+						Name:      "CUSTOM_FIELD_ENV_VAR",
+						ValueFrom: &kubelet.EnvVarSource{
+							FieldRef: &kubelet.ObjectFieldSelector{
+								FieldPath: "metadata.name",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -1315,6 +1323,34 @@ func TestParsePods(t *testing.T) {
 					"kube_container_name:dd-agent",
 					"pod_phase:running",
 					"my_custom_tag_key:foo-custom-value",
+				},
+				OrchestratorCardTags: []string{"pod_name:foo-pod"},
+				HighCardTags:         []string{
+					"container_id:d0242fc32d53137526dc365e7c86ef43b5f50b6f72dfd53dcb948eff4560376f",
+					"display_container_name:dd-agent_foo-pod",
+				},
+				StandardTags:         []string{},
+			}},
+		},
+		{
+			desc: "Pod env as tags with field env var",
+			pod: &kubelet.Pod{
+				Metadata: kubelet.PodMetadata{
+					Name: "foo-pod",
+				},
+				Status: dockerContainerStatus,
+				Spec:   dockerContainerSpecWithCustomEnv,
+			},
+			envAsTags: map[string]string{
+				"CUSTOM_FIELD_ENV_VAR": "my_custom_tag_key",
+			},
+			expectedInfo: []*TagInfo{{
+				Source: "kubelet",
+				Entity: dockerEntityID,
+				LowCardTags: []string{
+					"kube_container_name:dd-agent",
+					"pod_phase:running",
+					"my_custom_tag_key:foo-pod",
 				},
 				OrchestratorCardTags: []string{"pod_name:foo-pod"},
 				HighCardTags:         []string{

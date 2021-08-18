@@ -43,11 +43,12 @@ type PodOwner struct {
 
 // Spec contains fields for unmarshalling a Pod.Spec
 type Spec struct {
-	HostNetwork    bool            `json:"hostNetwork,omitempty"`
-	NodeName       string          `json:"nodeName,omitempty"`
-	InitContainers []ContainerSpec `json:"initContainers,omitempty"`
-	Containers     []ContainerSpec `json:"containers,omitempty"`
-	Volumes        []VolumeSpec    `json:"volumes,omitempty"`
+	HostNetwork        bool            `json:"hostNetwork,omitempty"`
+	NodeName           string          `json:"nodeName,omitempty"`
+	InitContainers     []ContainerSpec `json:"initContainers,omitempty"`
+	Containers         []ContainerSpec `json:"containers,omitempty"`
+	Volumes            []VolumeSpec    `json:"volumes,omitempty"`
+	ServiceAccountName string          `json:"serviceAccountName,omitempty"`
 }
 
 // ContainerSpec contains fields for unmarshalling a Pod.Spec.Containers
@@ -78,6 +79,17 @@ type EnvVar struct {
 	Name string `json:"name"`
 	// Value of the environment variable.
 	Value string `json:"value,omitempty"`
+	// ValueFrom field of the environment variable.
+	ValueFrom *EnvVarSource `json:"valueFrom,omitempty"`
+}
+
+type EnvVarSource struct {
+	FieldRef *ObjectFieldSelector `json:"fieldRef,omitempty"`
+}
+
+type ObjectFieldSelector struct {
+	FieldPath string `json:"fieldPath"`
+	ApiVersion string `json:"apiVersion",omitempty`
 }
 
 // VolumeSpec contains fields for unmarshalling a Pod.Spec.Volumes

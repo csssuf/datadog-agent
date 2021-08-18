@@ -192,31 +192,27 @@ func (c *KubeletCollector) parsePods(pods []*kubelet.Pod) ([]*TagInfo, error) {
 			}
 
 			// check env vars and image tag in spec
-			// TODO: Implement support of environment variables set from ConfigMap, Secret, DownwardAPI.
-			// See https://github.com/kubernetes/kubernetes/blob/d20fd4088476ec39c5ae2151b8fffaf0f4834418/pkg/kubelet/kubelet_pods.go#L566
-			// for the complete environment variable resolution process that is done by the kubelet.
 			for _, containerSpec := range pod.Spec.Containers {
 				if containerSpec.Name == container.Name {
-					tmpEnv := make(map[string]string)
-					mappingFunc := expansion.MappingFuncFor(tmpEnv)
+					computedEnvVars := computeEnvVars(pod, containerSpec.Env)
+					// if err != nil {
+					// 	return nil, err
+					// }
 
-					for _, env := range containerSpec.Env {
-						if env.Value != "" {
-							runtimeVal := expansion.Expand(env.Value, mappingFunc)
-							tmpEnv[env.Name] = runtimeVal
-
-							switch env.Name {
+					for name, value := range computedEnvVars {
+						if value != "" {
+							switch name {
 							case envVarEnv:
-								cTags.AddStandard(tagKeyEnv, runtimeVal)
+								cTags.AddStandard(tagKeyEnv, value)
 							case envVarVersion:
-								cTags.AddStandard(tagKeyVersion, runtimeVal)
+								cTags.AddStandard(tagKeyVersion, value)
 							case envVarService:
-								cTags.AddStandard(tagKeyService, runtimeVal)
+								cTags.AddStandard(tagKeyService, value)
 							default:
-								utils.AddMetadataAsTags(env.Name, runtimeVal, c.envAsTags, c.globEnv, cTags)
+								utils.AddMetadataAsTags(name, value, c.envAsTags, c.globEnv, cTags)
 							}
-						} else if env.Name == envVarEnv || env.Name == envVarVersion || env.Name == envVarService {
-							log.Warnf("Reading %s from a ConfigMap, Secret or anything but a literal value is not implemented yet.", env.Name)
+						} else if name == envVarEnv || name == envVarVersion || name == envVarService {
+							log.Warnf("Reading %s from a ConfigMap, Secret or anything but a literal value is not implemented yet.", name)
 						}
 					}
 					imageName, shortImage, imageTag, err := containers.SplitImageName(containerSpec.Image)
@@ -253,6 +249,53 @@ func (c *KubeletCollector) parsePods(pods []*kubelet.Pod) ([]*TagInfo, error) {
 		}
 	}
 	return output, nil
+}
+
+// computeEnvVars takes in a list of kubelet EnvVar specifications, and evaluates them based on the type.
+// TODO: Implement support for environment variables set from ConfigMaps/Secrets/other environment variables.
+// See https://github.com/kubernetes/kubernetes/blob/d20fd4088476ec39c5ae2151b8fffaf0f4834418/pkg/kubelet/kubelet_pods.go#L566
+// for the complete environment variable resolution process that is done by the kubelet.
+func computeEnvVars(pod *kubelet.Pod, envVars []kubelet.EnvVar) (map[string]string) {
+	finalEnvVars := make(map[string]string)
+	mappingFunc := expansion.MappingFuncFor(finalEnvVars)
+
+	for _, env := range envVars {
+		if env.Value != "" {
+			finalEnvVars[env.Name] = expansion.Expand(env.Value, mappingFunc)
+		} else if env.ValueFrom != nil {
+			switch {
+			case env.ValueFrom.FieldRef != nil:
+				finalEnvVars[env.Name] = getDownwardApiField(pod, env.ValueFrom.FieldRef.FieldPath)
+			default:
+				log.Debugf("Skipping unsupported valueFrom %s", env.ValueFrom)
+			}
+		}
+	}
+
+	return finalEnvVars
+}
+
+// getDownwardApiField translates downward API field references from environment variable
+// specifications into the correct underlying field.
+// TODO: support labels/annotations/`status.podIPs`.
+func getDownwardApiField(pod *kubelet.Pod, field string) (string) {
+	switch field {
+	case "metadata.name":
+		return pod.Metadata.Name
+	case "metadata.namespace":
+		return pod.Metadata.Namespace
+	case "spec.nodeName":
+		return pod.Spec.NodeName
+	case "spec.serviceAccountName":
+		return pod.Spec.ServiceAccountName
+	case "status.hostIP":
+		return pod.Status.HostIP
+	case "status.podIP":
+		return pod.Status.PodIP
+	default:
+		log.Warnf("Skipping unsupported downward API field '%s'", field)
+		return ""
+	}
 }
 
 // extractTagsFromMap extracts tags contained in a JSON string stored at the
